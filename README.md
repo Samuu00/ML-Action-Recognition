@@ -3,7 +3,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Un'architettura **production-ready**, modulare ed ultra-performante per il **riconoscimento di gesture/movimenti in tempo reale** da flussi video RGB/webcam. 
+Un'architettura per il **riconoscimento di gesture/movimenti in tempo reale** da flussi video RGB/webcam. 
 
 Il sistema adotta un approccio **Two-Stage Architecture**, disaccoppiando l'estrazione visiva delle feature dalla classificazione sequenziale temporale per garantire un'inferenza ad altissima frequenza (**< 5ms** per frame su CPU).
 
