@@ -14,15 +14,12 @@ feature_extraction:
   min_tracking_confidence: 0.5
 
 pipeline:
-  window_size: 30
+  window_size: 15
+  overlap: 1
 
 training:
-  classes:
-    - "idle"
-    - "wave"
-    - "fist"
-    - "swipe"
-  prediction_threshold: 0.7
+  classes: ["idle", "wave", "fist", "swipe"]
+  prediction_threshold: 0.65
   epochs: 40
   batch_size: 32
   lr: 0.001
