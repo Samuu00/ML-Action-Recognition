@@ -93,7 +93,9 @@ gesture_recognition/
 │   └── integration/              # Test di integrazione sulla pipeline
 ├── pyproject.toml
 ├── requirements.txt
-└── main.py                       # Entry point CLI
+└── main.py
+                       # Entry point CLI
+```
 
 ---
 
