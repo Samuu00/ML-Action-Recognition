@@ -2,8 +2,6 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Architecture](https://img.shields.io/badge/architecture-Hexagonal%20%2F%20Clean-orange.svg)]()
-[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Un'architettura **production-ready**, modulare ed ultra-performante per il **riconoscimento di gesture/movimenti in tempo reale** da flussi video RGB/webcam. 
 
@@ -15,19 +13,16 @@ Il sistema adotta un approccio **Two-Stage Architecture**, disaccoppiando l'estr
 
 A differenza dei classici approcci pesanti basati su 3D-CNN o Video Transformers, il sistema separa nettamente le responsabilità:
 
-┌─────────────────┐      ┌───────────────────────────┐      ┌──────────────────────────┐
-│  Webcam Stream  │ ───► │  Threaded Frame Capture   │ ───► │  MediaPipe Pose Engine   │
-└─────────────────┘      └───────────────────────────┘      └──────────────────────────┘
-│
-▼ (x, y, z, visibility)
-┌─────────────────┐      ┌───────────────────────────┐      ┌──────────────────────────┐
-│  Output Event   │ ◄─── │    Prediction Smoother    │ ◄─── │   ONNX Inference Engine │
-└─────────────────┘      └───────────────────────────┘      └──────────────────────────┘
-(Moving Average)                         ▲
-│ (1, Window_Size, Features)
-┌──────────────────────────┐
-│   Sliding Window Buffer  │
-└──────────────────────────┘
+```mermaid
+flowchart TD
+    A[📹 Webcam Stream] --> B[⚡ Threaded Frame Capture]
+    B --> C[🧘 MediaPipe Pose Engine]
+    C -- "(x, y, z, visibility)" --> D[📐 Spatial Normalizer]
+    D --> E[🔲 Sliding Window Buffer]
+    E -- "(1, Window_Size, Features)" --> F[🧠 ONNX Inference Engine]
+    F --> G[📈 Prediction Smoother]
+    G -- "Moving Average Filter" --> H[🎯 Output Event / App]
+```
 
 1. **Feature Extraction (Stage 1):** Utilizza **MediaPipe Pose** per convertire ogni frame in un vettore spaziale compatto (33 landmark 3D).
 2. **Spatial Normalization:** Applica trasformazioni matematiche per garantire l'invarianza a scala, traslazione e posizione dell'utente rispetto alla fotocamera.
