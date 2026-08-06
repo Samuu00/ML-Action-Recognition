@@ -1,13 +1,13 @@
-from pathlib import Path
-from typing import List
+# src/application/real_time_runner.py
 import cv2
+import time
+import numpy as np
 import yaml
+from pathlib import Path
 
-from src.infrastructure.camera.opencv_camera import OpenCVCamera
 from src.infrastructure.landmarks.mediapipe_extractor import MediaPipePoseExtractor
 from src.infrastructure.inference.onnx_classifier import ONNXGestureClassifier
 from src.domain.pipeline.sliding_window_buffer import SlidingWindowBuffer
-from src.domain.pipeline.prediction_smoother import PredictionSmoother
 from src.utils.logger import setup_logger
 
 logger = setup_logger("RealTimeRunner")
@@ -16,91 +16,96 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 class RealTimeRunner:
     def __init__(self, config_path: str = "config/config.yaml"):
-        config_file = Path(config_path)
-        if not config_file.is_absolute():
-            config_file = PROJECT_ROOT / config_file
-
+        config_file = PROJECT_ROOT / config_path
         with open(config_file, "r", encoding="utf-8") as f:
             self.config = yaml.safe_load(f)
 
-        camera_cfg = self.config.get("camera", {})
-        device_id: int = camera_cfg.get("device_id", 0)
-        width: int = camera_cfg.get("width", 1280)
-        height: int = camera_cfg.get("height", 720)
+        cfg_pipe = self.config["pipeline"]
+        cfg_fe = self.config["feature_extraction"]
 
-        model_rel_path = self.config.get("model", {}).get("path", "data/gesture_model.onnx")
-        model_path = PROJECT_ROOT / model_rel_path
+        self.camera_index = cfg_pipe.get("camera_index", 0)
+        self.window_size = cfg_pipe["window_size"]
+        self.classes = self.config["training"]["classes"]
 
-        training_cfg = self.config.get("training", {})
-        self.classes: List[str] = training_cfg.get("classes", ["idle", "wave", "fist", "swipe"])
-        self.threshold: float = training_cfg.get("prediction_threshold", 0.7)
-
-        pipeline_cfg = self.config.get("pipeline", {})
-        window_size: int = pipeline_cfg.get("window_size", 30)
-
-        self.camera = OpenCVCamera(device_id=device_id, width=width, height=height)
+        onnx_path = PROJECT_ROOT / "data" / "gesture_model.onnx"
+        self.classifier = ONNXGestureClassifier(str(onnx_path))
         self.extractor = MediaPipePoseExtractor(
-            min_detection_confidence=self.config.get("feature_extraction", {}).get("min_detection_confidence", 0.5),
-            min_tracking_confidence=self.config.get("feature_extraction", {}).get("min_tracking_confidence", 0.5)
+            min_detection_confidence=cfg_fe["min_detection_confidence"],
+            min_tracking_confidence=cfg_fe["min_tracking_confidence"]
         )
-        self.classifier = ONNXGestureClassifier(model_path=str(model_path))
-        self.buffer = SlidingWindowBuffer(window_size=window_size)
-        self.smoother = PredictionSmoother(window_size=5)
-        self.window_name = "Real-Time Gesture Recognition"
+        self.buffer = SlidingWindowBuffer(window_size=self.window_size)
+
+    def _init_camera(self) -> cv2.VideoCapture:
+        indices_to_try = [self.camera_index, 0, 1, 2]
+        indices_to_try = list(dict.fromkeys(indices_to_try))
+
+        for idx in indices_to_try:
+            cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+            if cap.isOpened():
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    logger.info(f"Webcam agganciata sull'indice: {idx}")
+                    return cap
+                cap.release()
+
+        raise RuntimeError(f"Nessuna webcam disponibile su indici: {indices_to_try}")
 
     def run(self) -> None:
-        logger.info("Avvio della pipeline. Premi 'q' o chiudi la finestra per uscire.")
-        cv2.namedWindow(self.window_name, cv2.WINDOW_AUTOSIZE)
+        cap = self._init_camera()
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+        window_name = "Real-Time Gesture Recognition"
+
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(window_name, 960, 720)
+
+        logger.info("Avvio della pipeline. Premi 'q' o clicca sulla 'X' per uscire.")
 
         try:
-            while True:
-                # Controlla se la finestra è stata chiusa con la 'X'
-                if cv2.getWindowProperty(self.window_name, cv2.WND_PROP_VISIBLE) < 1:
-                    logger.info("Finestra chiusa dall'utente.")
-                    break
-
-                frame = self.camera.read()
-                if frame is None:
-                    break
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    time.sleep(0.01)
+                    continue
 
                 landmarks, annotated_frame = self.extractor.extract(frame)
 
-                label = "NO POSE"
+                current_gesture = "BUFFERING..."
                 confidence = 0.0
 
                 if landmarks is not None:
                     self.buffer.add(landmarks)
+
                     if self.buffer.is_ready():
                         window_data = self.buffer.get_window()
                         probs = self.classifier.predict(window_data)
-                        smoothed_probs = self.smoother.smooth(probs)
+                        class_idx = int(np.argmax(probs))
+                        confidence = float(probs[class_idx])
+                        current_gesture = self.classes[class_idx]
 
-                        max_idx = int(smoothed_probs.argmax())
-                        max_prob = float(smoothed_probs[max_idx])
+                # Overlay UI
+                cv2.putText(
+                    annotated_frame,
+                    f"Gesture: {current_gesture} ({confidence:.2f})",
+                    (10, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1.0,
+                    (0, 255, 0),
+                    2,
+                    cv2.LINE_AA
+                )
 
-                        if max_prob >= self.threshold:
-                            label = self.classes[max_idx].upper()
-                            confidence = max_prob
-                        else:
-                            label = "UNCERTAIN"
-                else:
-                    # Reset se la posa va lost per evitare che lo smoother mantenga lo stato precedente
-                    self.buffer.clear()
-                    self.smoother.reset()
+                cv2.imshow(window_name, annotated_frame)
 
-                # Rendering HUD
-                color = (0, 255, 0) if label not in ["NO POSE", "UNCERTAIN"] else (0, 0, 255)
-                hud_text = f"Gesto: {label} ({confidence * 100:.1f}%)"
-                cv2.putText(annotated_frame, hud_text, (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.0, color, 2, cv2.LINE_AA)
-
-                cv2.imshow(self.window_name, annotated_frame)
-
-                # Processa gli eventi UI Windows
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
 
+                if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
+                    break
+
         finally:
-            self.camera.release()
-            self.extractor.close()
+            cap.release()
             cv2.destroyAllWindows()
+            self.extractor.close()
             logger.info("Risorse rilasciate.")

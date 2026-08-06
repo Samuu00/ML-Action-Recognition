@@ -1,7 +1,7 @@
 camera:
   device_id: 0
-  width: 1280
-  height: 720
+  width: 1920
+  height: 1080
   fps: 30
 
 dataset:
@@ -15,7 +15,7 @@ feature_extraction:
 
 pipeline:
   window_size: 15
-  overlap: 1
+  camera_index: 0
 
 training:
   classes: ["idle", "wave", "fist", "swipe"]

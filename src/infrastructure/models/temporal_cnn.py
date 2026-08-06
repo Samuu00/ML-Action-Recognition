@@ -1,10 +1,18 @@
+# src/infrastructure/models/temporal_cnn.py
 import torch
 import torch.nn as nn
 
-class TemporalGestureCNN(nn.Module):
-    def __init__(self, num_features: int = 99, sequence_length: int = 30, num_classes: int = 4):
+
+class TemporalCNN(nn.Module):
+    def __init__(
+            self,
+            num_features: int = 99,
+            num_classes: int = 4,
+            sequence_length: int = 15
+    ):
         super().__init__()
         self.num_features = num_features
+        self.num_classes = num_classes
         self.sequence_length = sequence_length
 
         self.features = nn.Sequential(
@@ -19,16 +27,9 @@ class TemporalGestureCNN(nn.Module):
             nn.AdaptiveAvgPool1d(1)
         )
 
-        self.classifier = nn.Sequential(
-            nn.Dropout(0.3),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, num_classes)
-        )
+        self.classifier = nn.Linear(128, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x.permute(0, 2, 1)
-
-        feat = self.features(x)
-        feat = feat.squeeze(-1)
+        feat = self.features(x)  # Shape: (B, 128, 1)
+        feat = feat.squeeze(-1)  # Shape: (B, 128)
         return self.classifier(feat)
