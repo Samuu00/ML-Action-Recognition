@@ -1,4 +1,4 @@
-# 🖐️ Real-Time Gesture Recognition Engine
+# Real-Time Gesture Recognition Engine
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -13,15 +13,45 @@ Il sistema adotta un approccio **Two-Stage Architecture**, disaccoppiando l'estr
 
 A differenza dei classici approcci pesanti basati su 3D-CNN o Video Transformers, il sistema separa nettamente le responsabilità:
 
-```mermaid
-flowchart TD
-    A[📹 Webcam Stream] --> B[⚡ Threaded Frame Capture]
-    B --> C[🧘 MediaPipe Pose Engine]
-    C -- "(x, y, z, visibility)" --> D[📐 Spatial Normalizer]
-    D --> E[🔲 Sliding Window Buffer]
-    E -- "(1, Window_Size, Features)" --> F[🧠 ONNX Inference Engine]
-    F --> G[📈 Prediction Smoother]
-    G -- "Moving Average Filter" --> H[🎯 Output Event / App]
+```text
+┌────────────────────────────────────────────────────────┐
+│                   📹 Webcam Stream                     │
+└───────────────────────────┬────────────────────────────┘
+                            │ (Raw Video Frames)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│            ⚡ Threaded Frame Capture (Async I/O)       │
+└───────────────────────────┬────────────────────────────┘
+                            │ (Async Queued Frame)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│             🧘 MediaPipe Pose Estimation Engine         │
+└───────────────────────────┬────────────────────────────┘
+                            │ (x, y, z, visibility)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│            📐 Spatial Normalizer (Scale & Shift)       │
+└───────────────────────────┬────────────────────────────┘
+                            │ (Normalized Features)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│      🔲 Temporal Sliding Window Buffer (Ring Buffer)    │
+└───────────────────────────┬────────────────────────────┘
+                            │ (1, Window_Size, Features)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│           🧠 ONNX Runtime Inference Engine             │
+└───────────────────────────┬────────────────────────────┘
+                            │ (Raw Logits / Probabilities)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│        📈 Prediction Smoother (Exponential Moving Avg)  │
+└───────────────────────────┬────────────────────────────┘
+                            │ (Filtered Prediction)
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│                 🎯 Output Event / Application          │
+└────────────────────────────────────────────────────────┘
 ```
 
 1. **Feature Extraction (Stage 1):** Utilizza **MediaPipe Pose** per convertire ogni frame in un vettore spaziale compatto (33 landmark 3D).
@@ -64,3 +94,91 @@ gesture_recognition/
 ├── pyproject.toml
 ├── requirements.txt
 └── main.py                       # Entry point CLI
+
+
+## 🚀 Quick Start
+
+### 1. Requisiti e Installazione
+
+Assicurati di avere Python **3.10+** installato.
+
+```bash
+# Clona il repository
+git clone https://github.com/your-username/gesture-recognition.git
+cd gesture-recognition
+
+# Crea ed attiva un ambiente virtuale
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Installa le dipendenze
+pip install -r requirements.txt
+```
+
+### 2. Configurazione
+
+Modifica il file `config/settings.yaml` per adattarlo al tuo hardware e alle tue esigenze:
+
+```yaml
+camera:
+  device_id: 0
+  width: 1280
+  height: 720
+
+pipeline:
+  window_size: 30             # Frame per finestra (1 sec @ 30 FPS)
+  prediction_threshold: 0.75   # Soglia di confidenza minima
+```
+
+### 3. Esecuzione Real-Time
+
+Per avviare la webcam e il modello di inferenza live:
+
+```bash
+python main.py --mode run --config config/settings.yaml
+```
+
+---
+
+## 🛠️ Workflow di Addestramento Custom
+
+Per addestrare il sistema su nuove gesture personalizzate:
+
+### Passaggio 1: Organizza i Video
+Posiziona i tuoi video di addestramento nella cartella `data/raw/` strutturati per classe:
+
+```text
+data/raw/
+├── wave_hand/
+│   ├── video1.mp4
+│   └── video2.mp4
+├── swipe_left/
+│   ├── video1.mp4
+│   └── video2.mp4
+└── no_gesture/
+    └── video1.mp4
+```
+
+### Passaggio 2: Estrazione Feature
+Esegui il builder per estrarre e normalizzare i landmark da tutti i video:
+
+```bash
+python main.py --mode build-dataset
+```
+
+### Passaggio 3: Addestramento ed Esportazione ONNX
+Utilizza i file in `src/application/trainer.py` per addestrare la rete PyTorch `TemporalGestureCNN` ed esportarla direttamente nel formato `data/gesture_model.onnx`.
+
+---
+
+## 🧪 Testing
+
+Esegui la suite di test unitari e d'integrazione:
+
+```bash
+# Esegui tutti i test
+pytest
+
+# Esegui con coverage report
+pytest --cov=src tests/
+```
