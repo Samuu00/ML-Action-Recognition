@@ -148,7 +148,7 @@ pipeline:
 Per avviare la webcam e il modello di inferenza live:
 
 ```bash
-python main.py --mode run --config config/settings.yaml
+python main.py --mode run --config config/config.yaml
 ```
 
 ---

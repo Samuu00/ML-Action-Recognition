@@ -1,6 +1,5 @@
-import pytest
 import numpy as np
-from src.infrastructure.pipeline.sliding_window import SlidingWindowBuffer
+from src.domain.pipeline.sliding_window_buffer import SlidingWindowBuffer
 
 def test_sliding_window_buffer_fill():
     window_size = 30

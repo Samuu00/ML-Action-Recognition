@@ -19,3 +19,8 @@ class GesturePrediction:
     label: str
     confidence: float
     probabilities: List[float]
+
+@dataclass(frozen=True)
+class PredictionResult:
+    label: str
+    confidence: float

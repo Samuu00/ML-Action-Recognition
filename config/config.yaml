@@ -1,0 +1,28 @@
+camera:
+  device_id: 0
+  width: 1280
+  height: 720
+  fps: 30
+
+dataset:
+  raw_data_dir: "data/raw"
+  processed_path: "data/processed/dataset.npz"
+
+feature_extraction:
+  num_landmarks: 33
+  min_detection_confidence: 0.5
+  min_tracking_confidence: 0.5
+
+pipeline:
+  window_size: 30
+
+training:
+  classes:
+    - "idle"
+    - "wave"
+    - "fist"
+    - "swipe"
+  prediction_threshold: 0.7
+  epochs: 40
+  batch_size: 32
+  lr: 0.001
