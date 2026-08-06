@@ -95,6 +95,17 @@ gesture_recognition/
 ├── requirements.txt
 └── main.py                       # Entry point CLI
 
+---
+
+## ⚡ Key Features & Best Practices
+
+* **Non-Blocking I/O Camera:** Acquisizione dei frame asincrona su thread dedicato (`ThreadedCamera`) per prevenire colli di bottiglia nel rendering.
+* **Invarianza Spaziale:** Normalizzazione relativa al centro del bacino (*mid-hip*) e ridimensionamento scalato sulla distanza inter-scapolare (*shoulder width*).
+* **ONNX Runtime Engine:** Esportazione del modello da PyTorch a ONNX per l'esecuzione ottimizzata su CPU senza dipendenze da framework pesanti in produzione.
+* **Anti-Flicker Prediction:** Smoothing delle probabilità tramite media mobile temporale per azzerare falsi positivi istantanei.
+* **SOLID & DRY:** Codice fortemente tipizzato (`mypy` compliant), estensibile e testabile con `pytest`.
+
+---
 
 ## 🚀 Quick Start
 
