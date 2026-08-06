@@ -1,4 +1,4 @@
-"""# 🖐️ Real-Time Gesture Recognition Engine
+# 🖐️ Real-Time Gesture Recognition Engine
 
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
