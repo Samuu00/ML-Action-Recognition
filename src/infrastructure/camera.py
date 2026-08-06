@@ -9,7 +9,7 @@ logger = setup_logger("Camera")
 
 class ThreadedCamera:
     def __init__(self, device_id: int = 0, width: int = 1280, height: int = 720):
-        self.cap = cv2.VideoCapture(device_id)
+        self.cap = cv2.VideoCapture(device_id, cv2.CAP_DSHOW)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         self.q: Queue[np.ndarray] = Queue(maxsize=1)

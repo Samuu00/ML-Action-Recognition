@@ -5,10 +5,15 @@ from typing import Optional
 from src.domain.interfaces import ExtractorInterface
 from src.domain.entities import FrameData
 
+# Fallback per bypassare il mancato caricamento dinamico di mp.solutions su Windows
+try:
+    mp_pose = mp.solutions.pose
+except AttributeError:
+    import mediapipe.python.solutions.pose as mp_pose  # type: ignore
+
 class MediaPipePoseExtractor(ExtractorInterface):
     def __init__(self, min_detection_confidence: float = 0.7, min_tracking_confidence: float = 0.7):
-        self.mp_pose = mp.solutions.pose
-        self.pose = self.mp_pose.Pose(
+        self.pose = mp_pose.Pose(
             static_image_mode=False,
             model_complexity=1,
             min_detection_confidence=min_detection_confidence,
